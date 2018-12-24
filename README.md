@@ -1,129 +1,167 @@
-# Class Extensions and Inheritance: `super`
+# JavaScript Fundamentals: Lexical Scoping
 
 ## Learning Goals
 
-- Use the `super` method
+* Explain the concept of lexical scoping
+* Demonstrate how lexical scoping informs the scope chain of a function
 
 ## Introduction
 
-In addition to simply extending classes, JavaScript provides an additional
-keyword, `super`, for directly working with a parent class consctructor and inherited
-methods.
+This lesson will discuss how JavaScript decides which outer scope to
+place into the scope chain for a new function. In JavaScript, each
+declared function creates its own _scope_. Lexical scope is scope
+that is defined at _lexing_ time. In other words, lexical scope is
+based on where variables and blocks of scope are define (by you) at
+write time, and solidified by the time your code is processed. Knowing
+what's going on under the hood during the declaration and invocation
+is powerful.
 
-## Use the `super` Method
+## Explain the Concept of Lexical Scoping
 
-In the code below, we have 2 JavaScript classes: `Pet` and `Dog`. The `Dog`
-class is a _subclass_ or _child_ class of `Pet` and it uses the `extends`
-keyword to inherit methods from the parent class:
+The _lexing_ phase of code compilation determines where and how all
+identifiers are declared, and how they will be looked up during execution.
+This mechianism also plays a role in being able to access certain variables
+throughout the code. For example the statement `var foo = 'bar'` is split
+into **two** separate steps at lexing time:
 
-```js
-class Pet {
-  constructor(name) {
-    this.name = name;
-    this._owner = null;
-  }
+1. `var foo` declares the variable in the scope before code execution.
+2. `foo = 'bar'` assigns the value `'bar'` to the variable `foo`, if it is
+found in the available scope.
 
-  get owner() {
-    return this._owner;
-  }
+## Demonstrate How Lexical Scoping Informs the Scope Chain of a Function
 
-  set owner(owner) {
-    this._owner = owner;
-  }
-
-  get speak() {
-    return `${this.name} makes a noise`;
-  }
-}
-
-// Inherits from Pet
-class Dog extends Pet {
-  constructor(name, breed) {
-    super(name);
-    this.breed = breed;
-  }
-}
-
-let creature = new Pet('The Thing');
-let dog = new Dog('Spot', 'foxhound');
-```
-
-Above, there is something new. The `Pet` class takes in a name parameter,
-assigns it to the `name` property, and also creates an `_owner` property,
-setting it to `null`. The `Dog` class takes in name and _breed_, calls `super`,
-passing in the name, then sets `this.breed` to the provided breed.
-
-What is happening? In our `Dog` constructor, we are able to use `super` to call
-the `Pet` constructor. Doing this will set up the `name` and `owner`
-properties. Then, once complete, the `Dog` constructor continues to execute,
-setting `breed`.
-
-In a child class constructor, `super` is used as a `method` and calls the parent
-class constructor before continuing with the child class constructor. This lets
-us extend a parent's constructor if we need to define custom behavior in a child
-constructor without having to override or ignore the parent.
-
-Outside of the constructor, the `super` keyword is also used, but this time, as
-an `object`. When used, it refers to parent class properties or methods. We
-could, for instance, use `super._owner` or `super.speak` in our `Dog` class.
-**However**, since instance methods and properties are _already_ inherited, this
-_will be the same as using_ `this._owner` _and_ `this.speak`.
-
-Using `super` as an object is useful in situations where a parent class contains
-a static method that we want to expand on in a child class:
+Take a look at the following code snippet:
 
 ```js
-class Pet {
-  constructor(name) {
-    this.name = name;
-    this._owner = null;
-  }
+const myVar = 'Foo';
 
-  get owner() {
-    return this._owner;
-  }
+function first () {
+  console.log('Inside first()');
 
-  set owner(owner) {
-    this._owner = owner;
-  }
-
-  static definition() {
-    return "A pet or companion animal is an animal kept primarily for a person's company.";
-  }
+  console.log('myVar is currently equal to:', myVar);
 }
 
-// Inherits from Pet
-class Dog extends Pet {
-  constructor(name, breed) {
-    super(name);
-    this.breed = breed;
-  }
+function second () {
+  const myVar = 'Bar';
 
-  static dogDefinition() {
-    return super.definition + ' Dogs are one of the most common types of pets.';
-  }
+  first();
 }
-
-let creature = new Pet('The Thing');
-let dog = new Dog('Spot', 'foxhound');
 ```
 
-In the `Pet` class above, we've included a static method, `definition`, for
-what a pet it. In `Dog`, we are able to use `super.definition` to access that
-static method, then _add_ to it, in this case, extending the definition to
-specifically reference dogs.
+JavaScript looks up the scope chain to perform identifier resolution. Given
+that information, what do you think will get logged out to the console when
+we invoke `second()`? Let's try it out:
+```js
+second();
+// LOG: Inside first()
+// LOG: myVar is currently equal to: Foo
+// => undefined
+```
+
+Did that seem unexpected? At first glance, it might seem like "Bar" should
+get printed out. Inside `second()`, that string is assigned to the `myVar`
+variable right before `first()` is invoked:
+
+```js
+function second () {
+  const myVar = 'Bar';
+
+  first();
+}
+```
+
+However, the assignment of `myVar` as `'Bar'` is **not visible to `first()`**.
+This is because `second()` is **not** the parent scope of `first()`.
+
+In the following diagram, the red `myVar` is declared in the global scope, and
+the green `myVar` is declared inside `second()`:
+
+![Lexical scope](https://curriculum-content.s3.amazonaws.com/web-development/js/principles/lexical-scoping-readme/lexical_scope.png)
+
+No variable named `myVar` exists inside `first()`. When the JavaScript engine
+reaches the second line of code inside the function, it has to consult the scope
+chain to figure out what `myVar` is:
+
+```js
+console.log('myVar is currently equal to:', myVar);
+```
+
+The engine's first (and only) stop in the scope chain is the global scope, where
+it finds a variable named `myVar`. The reference to `myVar` inside `first()` is
+pointed at that external variable, so `console.log()` prints out `myVar is currently equal to: Foo`.
+
+`first()` is declared in the global scope, and, when it comes to the scope chain,
+JavaScript functions don't care where they are invoked.
+**The only thing that matters is where they are declared**. When we declare a new
+function, the function asks, "Where was I created?" The answer to that question is
+the outer environment (the outer scope) that gets stored in the new function's scope
+chain.
+
+This is called _lexical scoping_, and _lexical environment_ is a synonym for _scope_
+that you might encounter in advanced JavaScript materials. _Lexical_ means "having to
+do with words," and for lexical scoping what counts is where we, the programmer, typed
+out the function declaration within our code.
+
+In the example above, we typed out our declaration for `first()` in the global scope,
+which gets stored in `first()`'s scope chain. When `first()` is invoked, the JavaScript
+engine can't find anything matching `myVar` locally, so it looked up the scope chain.
+The engine finds `myVar` in the outer scope — the global scope — with a value of `'Foo'`,
+which is what then gets printed out to the console.
+
+By contrast, if we **declare `first()` inside `second()`**, then `first()`'s reference to
+its outer scope points at `second()` instead of at the global scope:
+
+```js
+const myVar = 'Foo';
+
+function second () {
+  function first () {
+    console.log('Inside first()');
+
+    console.log('myVar is currently equal to:', myVar);
+  }
+
+  const myVar = 'Bar';
+
+  first();
+}
+```
+
+When we invoke `second()` this time, it creates a local `myVar` variable set to `'Bar'`.
+Then, it invokes `first()`:
+
+```js
+second();
+// LOG: Inside first()
+// LOG: myVar is currently equal to: Bar
+// => undefined
+```
+
+While `first()` is executing, it again encounters the reference to `myVar` and realizes
+it doesn't have a local variable or function with that name. `first()` looks up the scope
+chain again, but this time `first()`'s outer scope isn't the global scope. It's the scope of
+`second()` **because `first()` was declared inside `second()`**. So `first()` uses the copy
+of `myVar` from the `second()` scope, which contains the string `'Bar'`.
 
 ## Conclusion
 
-In this lesson, we dove deeper into class extensions and inheritance in
-JavaScript. In combination with `extends`, `super` allows a child class to
-access a parent's constructor from within a child's constructor. It also allows
-a child class to access methods and properties from a parent class, but as most
-of these are already inherited, this is only useful when modifying static
-methods from the parent class.
+Lexical scope is the scope defined by author-time decisions of where functions are declared.
+The lexing phase of compilation knows where and how all identifiers are declared, and determine
+how they will be looked-up during execution.
+
+When a variable contains an unexpected value, understanding the scope chain will save you hours
+of painful debugging. When you're wondering where to declare a function so that it can access
+the proper variables, your familiarity with JavaScript's lexical scoping will be useful. 
+
+<picture>
+  <source srcset="https://curriculum-content.s3.amazonaws.com/web-development/js/principles/lexical-scoping-readme/cool_party.webp" type="image/webp">
+  <source srcset="https://curriculum-content.s3.amazonaws.com/web-development/js/principles/lexical-scoping-readme/cool_party.gif" type="image/gif">
+  <img src="https://curriculum-content.s3.amazonaws.com/web-development/js/principles/lexical-scoping-readme/cool_party.gif" alt="Cool party!">
+</picture>
 
 ## Resources
 
-- [Inheritance in JavaScript](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Objects/Inheritance)
-- [“Super” and “Extends” In JavaScript ES6 - Understanding The Tough Parts](https://medium.com/beginners-guide-to-mobile-web-development/super-and-extends-in-javascript-es6-understanding-the-tough-parts-6120372d3420)
-- [Class inheritance, super](https://javascript.info/class-inheritance)
+- [JavaScript: Understanding the Weird Parts - The First 3.5 Hours](https://www.youtube.com/watch?v=Bv_5Zv5c-Ts) (Video)
+- [You Don't Know JS: Scope & Closures]
+(https://github.com/getify/You-Dont-Know-JS/blob/master/scope%20%26%20closures/ch2.md)
+- [What is Lexical Scope Anyway?](http://astronautweb.co/javascript-lexical-scope/)
